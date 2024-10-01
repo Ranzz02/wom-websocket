@@ -5,50 +5,83 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebSocket Demo</title>
-
+    <link rel="stylesheet" href="./main.css" />
 </head>
 
 <!-- Works with ws-node in this repo -->
     
 <body>
     <input id="in" type="text" placeholder="Write to convert to upper case">
+    <p id="clients">Clients: </p>
     <p id="out">...</p>
     <p id="err" style="color: red;"></p>
-
+    <details>
+        <summary>Settings</summary>
+        <input type="text" id="id" name="id" placeholder="Put your ws token here"/>
+        <input type="text" id="url" name="url" placeholder="Put the ws server url here">
+        <button onclick="saveSettings()">Save</button>
+    </details>
+    <div style="display: flex; height: 24px; align-items: center;">
+        <p id="conn-status">Not connected</p>
+        <button id="conn-reload" onclick="location.reload()">Reconnect</button>
+    </div>
     <script>
-        WS_TOKEN = localStorage.getItem('ws_token') || 'my-secret-token';
-        console.log(WS_TOKEN);
+        const tokenName = "ws_token"
+        const urlName = "ws_url"
+        // Set localstorage values to front end
+        document.getElementById("id").value = localStorage.getItem(tokenName)
+        document.getElementById("url").value = localStorage.getItem(urlName)
 
-        // Create a WebSocket connection
-        const socket = new WebSocket(`ws://localhost:5000?token=${WS_TOKEN}`);
+        function saveSettings() {
+            console.log("Save settings")
+            idData = document.getElementById("id").value;
+            urlData = document.getElementById("url").value;
+            localStorage.setItem(tokenName, idData)
+            localStorage.setItem(urlName, urlData)
+        }
 
-        // Connection established 
-        socket.onopen = function (event) {
-            console.log('Connected to WebSocket server');
-        };
+        function CreateWS() {
+            WS_TOKEN = localStorage.getItem(tokenName) || 'my-secret-token';
+            WS_URL = localStorage.getItem(urlName) || "ws://localhost:5000"
 
-        // Message listener
-        socket.onmessage = function (event) {
-            console.log('Received message:', event.data);
-            const data = JSON.parse(event.data);
+            // Create a WebSocket connection
+            const socket = new WebSocket(`${WS_URL}?token=${WS_TOKEN}`);
 
-            if (data.status == 0) {
-                document.querySelector('#out').innerHTML = data.msg;
-                document.querySelector('#err').innerHTML = '';
-            } else {
-                document.querySelector('#err').innerHTML = data.msg;
-            }
-            
-        };
+            // Connection established 
+            socket.onopen = function (event) {
+                console.log('Connected to WebSocket server');
+                document.querySelector("#conn-status").innerHTML = "Connected to websocket"
+                document.querySelector("#conn-reload").classList.add("hidden")
+            };
 
-        // Connection closed 
-        socket.onclose = function (event) {
-            console.log('Connection closed');
-        };
+            // Message listener
+            socket.onmessage = function (event) {
+                console.log('Received message:', event.data);
+                const data = JSON.parse(event.data);
 
-        document.querySelector('#in').addEventListener('input', (evt) => {
-            socket.send(evt.target.value);
-        });
+                if (data.status == 0) {
+                    document.querySelector('#out').innerHTML = data.msg;
+                    document.querySelector('#clients').innerHTML = data.clients;
+                    document.querySelector('#err').innerHTML = '';
+                } else {
+                    document.querySelector('#err').innerHTML = data.msg;
+                }
+                
+            };
+
+            // Connection closed 
+            socket.onclose = function (event) {
+                console.log('Connection closed');
+                document.querySelector("#conn-status").innerHTML = "Disconnected from websocket"
+                document.querySelector("#conn-reload").classList.remove("hidden")
+            };
+
+            document.querySelector('#in').addEventListener('input', (evt) => {
+                socket.send(evt.target.value);
+            });
+        }
+
+        CreateWS()
     </script>
 
 </body>
